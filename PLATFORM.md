@@ -193,6 +193,14 @@ a human in the loop. Token lives in NOC's .env as IDENTITY_SERVICE_TOKEN.
   connect both ways, e.g. app via TCP, CLI via socket).
 - SNMP: snmpd installed and running on loopback only (127.0.0.1:161,
   community public) purely as a test fixture — never exposed externally.
+- Security headers: /etc/nginx/snippets/security-headers.conf, included
+  in all three vhosts (identity/noc/portal) right after Certbot's
+  ssl_dhparam directive. HSTS (1yr, includeSubDomains), X-Frame-Options
+  (SAMEORIGIN), X-Content-Type-Options (nosniff), Referrer-Policy
+  (strict-origin-when-cross-origin), X-XSS-Protection. No Content-Security-
+  Policy yet — deliberately deferred, since it needs a careful audit of
+  every external resource each site loads (Google Fonts etc.) to avoid
+  breaking something, and deserves its own dedicated pass.
 - Backups: daily mysqldump of both databases (tuwa_identity, tuwa_noc) via
   cron at 03:00, using a dedicated read-only tuwa_backup MySQL user
   (SELECT/LOCK TABLES/SHOW VIEW/EVENT/TRIGGER only, no write access).
