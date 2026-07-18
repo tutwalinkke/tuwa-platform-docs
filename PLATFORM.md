@@ -264,9 +264,23 @@ Portal:
   npm test                      (18 tests)
   npm run build                 (rebuild dist/, nginx picks it up immediately)
 
-## Git
+## Git & CI
 
-Each service is its own repo, main branch, no remote configured yet (all history
-lives only on this VPS). Commit messages describe what changed and why; several
-early commits document real bugs found and fixed (SNMP OID key formatting, Carbon
-diff sign, Laravel test-guard caching) — worth reading if similar issues recur.
+Each service is its own repo, main branch, pushed to a private GitHub repo
+(tuwa-identity, tuwa-noc, tuwa-portal, tuwa-platform-docs, all under the
+tutwalinkke account). Commit messages describe what changed and why; several
+commits document real bugs found and fixed (SNMP OID key formatting, Carbon
+diff sign, Laravel test-guard caching, Http::fake() mocking by URL not by
+request header) — worth reading if similar issues recur.
+
+All three app repos have GitHub Actions (.github/workflows/tests.yml) running
+the full test suite on every push to main. NOC's workflow additionally
+installs and configures a local snmpd agent to match the local test
+environment exactly, since PollDeviceInterfacesTest exercises real SNMP
+protocol behavior, not mocks. Portal's workflow also runs a production build
+as a second signal beyond just tests passing. All three were verified with a
+real failing-then-passing run, not just a single green checkmark — NOC's
+first CI run caught a genuine test-design bug (Http::fake() mocks by URL
+pattern, not by which token was actually sent, so a static fake response
+returned the same identity regardless of actor — silently masked in local
+runs, caught immediately by CI) which was fixed and reverified.
