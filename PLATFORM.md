@@ -197,10 +197,20 @@ a human in the loop. Token lives in NOC's .env as IDENTITY_SERVICE_TOKEN.
   in all three vhosts (identity/noc/portal) right after Certbot's
   ssl_dhparam directive. HSTS (1yr, includeSubDomains), X-Frame-Options
   (SAMEORIGIN), X-Content-Type-Options (nosniff), Referrer-Policy
-  (strict-origin-when-cross-origin), X-XSS-Protection. No Content-Security-
-  Policy yet — deliberately deferred, since it needs a careful audit of
-  every external resource each site loads (Google Fonts etc.) to avoid
-  breaking something, and deserves its own dedicated pass.
+  (strict-origin-when-cross-origin), X-XSS-Protection.
+- Content-Security-Policy: /etc/nginx/snippets/csp-portal.conf, Portal
+  only (Identity/NOC are pure JSON APIs with no HTML to protect this
+  way). Built from an actual audit of index.html and api.js: script-src
+  'self' with no unsafe-inline/unsafe-eval (the real XSS protection),
+  style-src allows 'unsafe-inline' + fonts.googleapis.com (Tailwind's
+  compiled CSS and inline SVG styles need this), font-src allows
+  fonts.gstatic.com, connect-src allows identity.tuwalink.com and
+  noc.tuwalink.com (the two APIs the SPA actually calls). Verified live
+  in a real browser across all six Portal pages with DevTools console
+  open — zero CSP violations. Nginx configs themselves aren't in any
+  git repo (they're server config, not app code) — this document is
+  their only record; if this server is ever rebuilt, these snippet
+  files need to be recreated from the content documented here.
 - Backups: daily mysqldump of both databases (tuwa_identity, tuwa_noc) via
   cron at 03:00, using a dedicated read-only tuwa_backup MySQL user
   (SELECT/LOCK TABLES/SHOW VIEW/EVENT/TRIGGER only, no write access).
