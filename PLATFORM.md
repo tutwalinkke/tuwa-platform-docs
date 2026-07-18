@@ -150,6 +150,15 @@ a human in the loop. Token lives in NOC's .env as IDENTITY_SERVICE_TOKEN.
   connect both ways, e.g. app via TCP, CLI via socket).
 - SNMP: snmpd installed and running on loopback only (127.0.0.1:161,
   community public) purely as a test fixture — never exposed externally.
+- Backups: daily mysqldump of both databases (tuwa_identity, tuwa_noc) via
+  cron at 03:00, using a dedicated read-only tuwa_backup MySQL user
+  (SELECT/LOCK TABLES/SHOW VIEW/EVENT/TRIGGER only, no write access).
+  Compressed, timestamped, stored at /srv/backups/mysql/, 14-day local
+  retention. Restore tested and confirmed working: zcat <file> | mysql -u root
+  -p <database>. This is local-disk-only — a genuine off-site/remote backup
+  destination is not yet configured and would be the next step if this
+  server's disk itself is ever a single point of failure worth protecting
+  against.
 
 ## Known gaps (honest, as of this writing)
 
