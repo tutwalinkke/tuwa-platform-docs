@@ -61,9 +61,20 @@ Queue: identity-queue worker under Supervisor.
   logAll() catching routine attribute touches (e.g. last_login_at),
   tenant-scoped via a join through causer_id -> users.tenant_id.
 
-Tests: 49, in tests/Feature/ — AuthTest, TenantIsolationTest,
+Session lifetime: Sanctum tokens now expire after 30 minutes
+(SANCTUM_EXPIRATION_MINUTES env var, default 30). Sanctum's config alone
+does not populate expires_at on new tokens — LoginController explicitly
+passes the expiration to createToken(). The noc-service account's token
+is a deliberate exception (long-lived, since it authenticates unattended
+cron jobs, not a human session). Verified live: forcing a token's
+expires_at into the past correctly returns 401, and the Portal correctly
+redirects to /login on that 401 (already-existing behavior, confirmed
+still works under this new condition).
+
+Tests: 53, in tests/Feature/ — AuthTest, TenantIsolationTest,
 PasswordResetTest, EmailVerificationTest, UserManagementTest,
-TenantEndpointTest, RateLimitTest, ActivityLogTest. Run with php artisan test.
+TenantEndpointTest, RateLimitTest, ActivityLogTest, TokenExpirationTest.
+Run with php artisan test.
 
 ### Tuwa NOC — noc.tuwalink.com
 
