@@ -99,9 +99,15 @@ php artisan schedule:run every minute):
 
 Queue: noc-queue worker under Supervisor (alert emails).
 
-Tests: 68, in tests/Feature/ — DeviceTest, PollDevicesTest,
+- CRM — customers table (name, phone, email, service_address, status),
+  tenant-scoped. devices.customer_id (nullable, nullOnDelete) links a device
+  to a specific subscriber; a device may also have no customer (pure
+  infrastructure like a core router). Cross-tenant device linking is
+  rejected the same way IPAM's device linking is.
+
+Tests: 77, in tests/Feature/ — DeviceTest, PollDevicesTest,
 PollDeviceInterfacesTest, SubnetServiceTest, SubnetTest, BillingServiceTest,
-BillingControllerTest. Run with php artisan test.
+BillingControllerTest, CustomerTest. Run with php artisan test.
 
 ### Tuwa Portal — portal.tuwalink.com
 
@@ -113,15 +119,15 @@ The actual human-facing product. Authenticates against Identity, renders NOC dat
 Token stored in localStorage, attached to every NOC/Identity API call.
 
 Pages: Login, Dashboard (health summary, device list, recent events, trial/
-blocked billing banners), Subnets (allocation table), Billing (invoices,
-account status, outstanding balance).
+blocked billing banners), Customers (CRM list + create form), Subnets
+(allocation table), Billing (invoices, account status, outstanding balance).
 
 Design system: deep slate-navy palette (ink-950/900/800), signal-amber
 accent (#F5A623), semantic status colors (green/red/amber), Space Grotesk +
 Inter + JetBrains Mono. A pulse-line motif ties the visual identity to what the
 platform actually does (ICMP is literally a pulse check).
 
-Tests: 18, Vitest + React Testing Library, in src/pages/__tests__/. Run with
+Tests: 22, Vitest + React Testing Library, in src/pages/__tests__/. Run with
 npm test. Build with npm run build; nginx serves straight from dist/, no
 separate deploy step beyond rebuilding.
 
