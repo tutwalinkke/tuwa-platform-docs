@@ -56,9 +56,14 @@ earlier version of this rate limiting before named limiters were introduced).
 Mail: Brevo SMTP, sending from tuwanoc@tuwalink.com (domain-authenticated).
 Queue: identity-queue worker under Supervisor.
 
-Tests: 44, in tests/Feature/ — AuthTest, TenantIsolationTest,
+- Audit log — GET /activity, built on Spatie Activitylog's existing
+  activity_log table. Filters out the automatic 'updated' noise from
+  logAll() catching routine attribute touches (e.g. last_login_at),
+  tenant-scoped via a join through causer_id -> users.tenant_id.
+
+Tests: 49, in tests/Feature/ — AuthTest, TenantIsolationTest,
 PasswordResetTest, EmailVerificationTest, UserManagementTest,
-TenantEndpointTest, RateLimitTest. Run with php artisan test.
+TenantEndpointTest, RateLimitTest, ActivityLogTest. Run with php artisan test.
 
 ### Tuwa NOC — noc.tuwalink.com
 
@@ -104,10 +109,22 @@ Queue: noc-queue worker under Supervisor (alert emails).
   to a specific subscriber; a device may also have no customer (pure
   infrastructure like a core router). Cross-tenant device linking is
   rejected the same way IPAM's device linking is.
+- Audit log — GET /activity, via an ActivityLogger service. NOC has no
+  local user model, so actor identity (id, name, email, tenant_id) is
+  stored in Spatie Activitylog's properties JSON field rather than the
+  polymorphic causer relationship, and tenant-scoping filters on that.
+  Wired into all state-changing actions in DeviceController,
+  SubnetController, CustomerController, PaymentController.
+  NOTE: tenant filtering is done in PHP after fetching a bounded result
+  set, not via a database-level JSON query — whereJsonContains and the
+  properties->tenant_id shorthand both showed real, confirmed behavior
+  differences between MySQL and SQLite for scalar-in-object matching,
+  which made tenant isolation silently unreliable. Found via the test
+  suite, verified against real production data before and after the fix.
 
-Tests: 77, in tests/Feature/ — DeviceTest, PollDevicesTest,
+Tests: 81, in tests/Feature/ — DeviceTest, PollDevicesTest,
 PollDeviceInterfacesTest, SubnetServiceTest, SubnetTest, BillingServiceTest,
-BillingControllerTest, CustomerTest. Run with php artisan test.
+BillingControllerTest, CustomerTest, ActivityLogTest. Run with php artisan test.
 
 ### Tuwa Portal — portal.tuwalink.com
 
@@ -120,14 +137,16 @@ Token stored in localStorage, attached to every NOC/Identity API call.
 
 Pages: Login, Dashboard (health summary, device list, recent events, trial/
 blocked billing banners), Customers (CRM list + create form), Subnets
-(allocation table), Billing (invoices, account status, outstanding balance).
+(allocation table), Billing (invoices, account status, outstanding balance),
+Activity (merged, chronologically sorted feed of Identity + NOC audit
+events, source-badged, resilient to either source failing independently).
 
 Design system: deep slate-navy palette (ink-950/900/800), signal-amber
 accent (#F5A623), semantic status colors (green/red/amber), Space Grotesk +
 Inter + JetBrains Mono. A pulse-line motif ties the visual identity to what the
 platform actually does (ICMP is literally a pulse check).
 
-Tests: 22, Vitest + React Testing Library, in src/pages/__tests__/. Run with
+Tests: 25, Vitest + React Testing Library, in src/pages/__tests__/. Run with
 npm test. Build with npm run build; nginx serves straight from dist/, no
 separate deploy step beyond rebuilding.
 
