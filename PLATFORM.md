@@ -153,12 +153,16 @@ a human in the loop. Token lives in NOC's .env as IDENTITY_SERVICE_TOKEN.
 - Backups: daily mysqldump of both databases (tuwa_identity, tuwa_noc) via
   cron at 03:00, using a dedicated read-only tuwa_backup MySQL user
   (SELECT/LOCK TABLES/SHOW VIEW/EVENT/TRIGGER only, no write access).
-  Compressed, timestamped, stored at /srv/backups/mysql/, 14-day local
-  retention. Restore tested and confirmed working: zcat <file> | mysql -u root
-  -p <database>. This is local-disk-only — a genuine off-site/remote backup
-  destination is not yet configured and would be the next step if this
-  server's disk itself is ever a single point of failure worth protecting
-  against.
+  Compressed, timestamped, stored at /srv/backups/mysql/ (plaintext, for
+  fast local restores), 14-day local retention. Each dump is also encrypted
+  (GPG, AES256, passphrase in /srv/backups/.encryption-passphrase — copy
+  exists outside this server) and pushed to the private GitHub repo
+  tuwa-platform-docs under backups/, providing genuine off-site protection
+  against total server loss. Full round-trip tested: dump, encrypt, push,
+  decrypt, restore into a throwaway database, row counts verified correct.
+  All four application repos (Identity, NOC, Portal, and this docs/backup
+  repo) are also pushed to private GitHub repos, closing the
+  code-only-exists-on-one-disk risk alongside the data risk.
 
 ## Known gaps (honest, as of this writing)
 
