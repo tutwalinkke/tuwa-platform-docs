@@ -165,9 +165,9 @@ a human in the loop. Token lives in NOC's .env as IDENTITY_SERVICE_TOKEN.
 4. role_has_permissions unused — Identity's permission rows exist but
    nothing checks them (only role names are checked). No live impact; would need
    wiring if any endpoint moves from role-based to permission-based authorization.
-5. Demo/test data — accumulated during development (duplicate device names,
-   a stuck-down device from billing tests). Being cleaned up alongside this
-   document.
+5. (Resolved) Demo/test data was cleaned up — three billing-test-artifact
+   devices removed, remaining devices renamed to be accurate rather than
+   describe the test scenario that created them.
 6. Favicon — Portal currently ships with no real favicon (a data-URI
    placeholder), left over from removing unused Vite template assets.
 
