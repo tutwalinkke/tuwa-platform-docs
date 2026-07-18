@@ -46,12 +46,19 @@ Key endpoints (/api/v1/...):
 - GET /tenants/{id} — super-admin only, used by NOC's billing service to read a
   tenant's real creation date
 
+Rate limiting: /login (5/min), /password/forgot (3/min), /password/reset
+(5/min), each via a named RateLimiter (AppServiceProvider::boot) keyed
+explicitly per-route + IP. Deliberately not using Laravel's throttle:max,decay
+shorthand — that syntax keys only by domain+IP, meaning separate endpoints
+would silently share one bucket (found via testing, was a real bug in an
+earlier version of this rate limiting before named limiters were introduced).
+
 Mail: Brevo SMTP, sending from tuwanoc@tuwalink.com (domain-authenticated).
 Queue: identity-queue worker under Supervisor.
 
-Tests: 41, in tests/Feature/ — AuthTest, TenantIsolationTest,
+Tests: 44, in tests/Feature/ — AuthTest, TenantIsolationTest,
 PasswordResetTest, EmailVerificationTest, UserManagementTest,
-TenantEndpointTest. Run with php artisan test.
+TenantEndpointTest, RateLimitTest. Run with php artisan test.
 
 ### Tuwa NOC — noc.tuwalink.com
 
