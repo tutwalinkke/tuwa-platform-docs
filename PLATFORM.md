@@ -152,6 +152,16 @@ blocked billing banners), Customers (CRM list + create form), Subnets
 Activity (merged, chronologically sorted feed of Identity + NOC audit
 events, source-badged, resilient to either source failing independently).
 
+Visual redesign (2026-07-20): moved from a flat stat-card grid to a denser
+instrument-panel layout, inspired by (not copied from) Grafana-style
+monitoring dashboards — radial SVG health gauge, a real bandwidth history
+chart (recharts) backed by genuinely stored SNMP data via a new
+GET /dashboard/bandwidth-history NOC endpoint, and a vertical icon sidebar
+(lucide-react) replacing the original horizontal top nav. Palette deepened
+(ink-950 #0A0F1A, more saturated status colors for chart legibility) but
+kept the same named tokens and type system established at first build —
+this was a density/maturity pass, not a rebrand.
+
 Design system: deep slate-navy palette (ink-950/900/800), signal-amber
 accent (#F5A623), semantic status colors (green/red/amber), Space Grotesk +
 Inter + JetBrains Mono. A pulse-line motif ties the visual identity to what the
