@@ -285,6 +285,50 @@ This same fix will be needed for any future fresh deployment of any of
 these apps, including if this server is ever rebuilt — worth doing
 proactively as a standard post-clone step, not discovering it again.
 
+## Staging environment
+
+A full, isolated second copy of the platform for safe testing, separate from
+production in every way that matters:
+
+- Domains: staging-identity.tuwalink.com, staging-noc.tuwalink.com,
+  staging-portal.tuwalink.com (DNS A records added manually via Bluehost,
+  pointing at this same server's IP)
+- Databases: tuwa_identity_staging, tuwa_noc_staging (separate MySQL users
+  too, not just separate schemas)
+- Codebases: /srv/platform/apps/identity-staging, noc-staging,
+  portal-staging — fresh git clones from the same GitHub repos as
+  production, not copies of the production directories. This doubled as a
+  real test that the GitHub history is genuinely complete and
+  self-sufficient (all three cloned, installed, migrated, and passed their
+  full test suites with zero production-specific fixes needed).
+- Staging NOC points to staging Identity (not production Identity) for
+  cross-service auth — genuinely isolated, not silently depending on prod.
+  Verified live: logged in against staging Identity, called staging NOC's
+  /ping, got back the correct staging identity — not production's.
+  Staging has its own service account (noc-service@staging.tuwalink.com)
+  with its own token, separate from production's.
+- Mail: MAIL_MAILER=log in both staging apps — deliberately never sends
+  real email during testing, regardless of what SMTP credentials exist
+  elsewhere on the server.
+- No cron, no Supervisor queue workers for staging — QUEUE_CONNECTION=sync
+  means jobs run inline, no background worker needed. Billing/polling
+  commands can be run manually when actually testing those flows.
+- Login: admin@staging.tuwalink.com / StagingAdmin2026!
+
+### Real bug found while setting this up
+
+Fresh git clones are owned solely by the tuwalink user; PHP-FPM runs as
+www-data, which is not a member of tuwalink's group. This meant Laravel
+could not write compiled Blade views (storage/framework/views), causing a
+templnam(): file created in the system's temporary directory error on
+every page load — a real, confirmed production-parity gap between "clone
+the repo" and "the app actually runs." Fixed by:
+  sudo chown -R tuwalink:www-data <app>/storage <app>/bootstrap/cache
+  sudo chmod -R 775 <app>/storage <app>/bootstrap/cache
+This same fix will be needed for any future fresh deployment of any of
+these apps, including if this server is ever rebuilt — worth doing
+proactively as a standard post-clone step, not discovering it again.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
