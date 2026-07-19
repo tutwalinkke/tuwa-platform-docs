@@ -339,6 +339,29 @@ This same fix will be needed for any future fresh deployment of any of
 these apps, including if this server is ever rebuilt — worth doing
 proactively as a standard post-clone step, not discovering it again.
 
+## OS-level security (UFW, Fail2Ban)
+
+Both were already installed and active from initial server provisioning,
+before this session began — not something built during this project, but
+verified and hardened here.
+
+UFW: default-deny incoming, allowing only 22 (SSH), 80/443 (HTTP/HTTPS),
+51820/udp (WireGuard, powering the wg0 interface visible in our own SNMP
+data). Nothing unexpected open.
+
+Fail2Ban: watching sshd since server provisioning. As of this session,
+had recorded 92,365 failed SSH login attempts and issued 10,310 bans over
+roughly two months — this server is under continuous, real brute-force
+attack, not a hypothetical risk. Default policy (5 attempts / 10min ->
+10min ban) was genuinely too weak against a sustained attacker who can
+simply wait out a 10-minute ban. Hardened via /etc/fail2ban/jail.local:
+bantime raised to 1h, with escalating bans (bantime.increment, factor 2,
+capped at 24h) for repeat offenders. Config change verified safe with
+fail2ban-client -t before restart, and the restart itself verified safe
+by opening a genuinely fresh SSH connection afterward — the one place
+in this whole session where a mistake could have caused an unrecoverable
+lockout, so this was checked deliberately rather than assumed.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
