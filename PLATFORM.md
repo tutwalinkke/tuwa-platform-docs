@@ -225,6 +225,22 @@ a human in the loop. Token lives in NOC's .env as IDENTITY_SERVICE_TOKEN.
   repo) are also pushed to private GitHub repos, closing the
   code-only-exists-on-one-disk risk alongside the data risk.
 
+## Platform self-monitoring
+
+/srv/monitoring/check-uptime.sh — runs every 5 minutes via cron, independent
+of all three app services (so it keeps working even if all three are down
+simultaneously). Checks each service's health endpoint (Identity /up, NOC
+/up, Portal /), tracks state transitions in /srv/monitoring/state/*.state,
+and emails an alert (via raw curl SMTP against Brevo, reusing the same
+credentials as Identity/NOC's own mail sending) only on actual up<->down
+transitions, not on every check — otherwise a prolonged outage would spam
+an email every 5 minutes. Credentials in /srv/monitoring/.mail-credentials
+(chmod 600). Tested with genuine failing-then-passing email delivery,
+including catching and fixing a real bug where \n in a shell variable
+does not become a literal newline the way it does in a printf format
+string — fixed by using real multi-line variable assignment instead of
+escape sequences.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
