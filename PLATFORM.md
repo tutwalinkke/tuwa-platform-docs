@@ -535,6 +535,44 @@ resolved it through real button clicks, confirmed both actions
 persisted correctly and moved the incident between tabs. 5 new frontend
 tests, full Portal suite at 30 tests.
 
+## Network topology
+
+Manually-declared topology (device_links table: device_a_id, device_b_id,
+tenant_id, link_type, description) with real live status shown on it —
+deliberately NOT automatic discovery. Real LLDP/CDP/ARP-based discovery
+needs actual protocol access to real hardware, which this environment
+does not have (same underlying constraint as SNMP/SSH device monitoring
+generally). An operator declares which devices connect to which; the
+map then shows genuine current device status on that structure.
+
+Link normalization: the lower device ID is always stored as
+device_a_id regardless of which order the API caller declares them in,
+so a link and its reverse-order duplicate are recognized as the same
+connection — genuinely prevented by a real unique constraint, not just
+application-level convention. Verified by dedicated tests declaring
+the same link in both directions.
+
+API: GET /topology (combined devices + links, tenant-scoped), POST
+/topology/links (create, rejects self-links and cross-tenant links),
+DELETE /topology/links/{id}.
+
+Portal UI: Topology page, SVG diagram with circular auto-layout (no
+saved per-device positions — recalculated fresh each render), nodes
+colored by real live device status (green/red/gray), lines between
+linked devices labeled with link type, a declared-links list below
+with remove actions, an add-link form.
+
+Verified live end-to-end with real production data: linked two real
+devices, confirmed the combined topology endpoint returned correct
+data, confirmed the Portal rendered a correct diagram — two genuinely
+down devices shown red, one genuinely up device shown green, the real
+fiber link correctly drawn between the right two nodes, the
+unconnected third device correctly shown with no line.
+
+9 backend tests (TopologyTest) + 4 frontend tests, including the two
+most load-bearing ones: link normalization and duplicate-rejection
+regardless of declared order.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
