@@ -526,9 +526,14 @@ and tenant scoping, and escalation command behavior (fires past
 threshold, doesn't fire within threshold, doesn't fire for acknowledged
 incidents, never fires twice for the same incident).
 
-Portal UI for incidents is intentionally deferred to a following pass —
-this was scoped as backend + API first, consistent with how bandwidth
-alerting and maintenance windows were built.
+Portal UI: Incidents page (src/pages/Incidents.jsx), status-filtered
+tabs (All/Open/Acknowledged/Resolved), acknowledge/resolve buttons,
+sidebar nav entry. Verified live end-to-end with real production data:
+forced a genuine device state transition, confirmed the fresh incident
+appeared correctly in the real UI (not just the API), acknowledged and
+resolved it through real button clicks, confirmed both actions
+persisted correctly and moved the incident between tabs. 5 new frontend
+tests, full Portal suite at 30 tests.
 
 ## Known gaps (honest, as of this writing)
 
