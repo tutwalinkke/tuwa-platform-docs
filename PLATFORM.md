@@ -362,6 +362,42 @@ by opening a genuinely fresh SSH connection afterward — the one place
 in this whole session where a mistake could have caused an unrecoverable
 lockout, so this was checked deliberately rather than assumed.
 
+## Two-factor authentication (TOTP)
+
+Optional, per-user, built on pragmarx/google2fa-laravel. Encrypted secret
+and recovery codes (Eloquent 'encrypted' cast, layered on top of APP_KEY).
+Two-step login: password success with 2FA enabled returns a short-lived
+(5min), restricted-ability Sanctum token ('2fa-pending' only) instead of a
+real session token — a real token is only issued after a valid TOTP code
+or one-time recovery code (8 generated at enable time) is verified.
+
+Two real bugs found and fixed via live testing before this shipped:
+1. This app's auth:sanctum middleware alias is non-standard (aliased to
+   EnsureFrontendRequestsAreStateful rather than the usual parameterized
+   Authenticate::class pattern) — Laravel's built-in 'abilities'
+   middleware alias was also simply missing entirely, causing a 500 on
+   the verify endpoint and silently failing to enforce the pending-token
+   restriction (confirmed live: a pending token could hit /me and get
+   200 OK, when it should be 401).
+2. After adding custom middleware to work around that, a second bug:
+   Sanctum's Token::can() treats a '*' wildcard ability (which every
+   normal, fully-privileged token has) as satisfying ANY ability check,
+   including can('2fa-pending') — so real, legitimate session tokens
+   were being incorrectly rejected everywhere. Fixed by checking the
+   token's raw ability array directly instead of going through can().
+   A dedicated regression test (test_a_normal_fully_privileged_token_is_
+   not_incorrectly_rejected) exists specifically to catch this again.
+
+Portal UI: Settings page (QR code via qrcode.react, manual-entry key
+fallback, recovery codes shown once at confirm time) and a two-step
+Login page. Verified fully working end-to-end in a real browser through
+every state — enable, confirm, login-with-2FA, recovery code redemption
+(consumed correctly, cannot be reused), and disable (requires password
+re-confirmation).
+
+13 backend tests (TwoFactorAuthTest), all passing alongside the full
+existing 66-test Identity suite with zero regressions.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
