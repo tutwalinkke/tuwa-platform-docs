@@ -398,6 +398,68 @@ re-confirmation).
 13 backend tests (TwoFactorAuthTest), all passing alongside the full
 existing 66-test Identity suite with zero regressions.
 
+## Bandwidth threshold alerting
+
+Optional, per-device, per-direction (in/out) configurable thresholds
+(devices.alert_threshold_in_bps / alert_threshold_out_bps, nullable —
+no threshold set means no checking). Checked during the existing
+devices:poll-snmp cycle, against the device's total throughput summed
+across all its interfaces (matching how the Dashboard already presents
+bandwidth). State-transition tracking (via DeviceEvent, same table
+up/down status changes use) avoids repeat alerts during a sustained
+breach and distinguishes a real breach (warning severity + email) from
+recovery (info severity, no email).
+
+### Two real, previously-invisible production bugs found while verifying this live
+
+1. DeviceEvent ordering ambiguity: two threshold events created within
+   the same second (a real possibility, since created_at is set
+   manually via now() rather than relying on database auto-increment
+   timestamp precision) could not be reliably ordered by created_at
+   alone, causing the breach/recovery state machine to occasionally
+   read stale state. Fixed by adding id as an explicit tiebreaker.
+
+2. Alert recipient scoping: AlertService::getResponsibleUsers() sends
+   to every active tenant-admin/super-admin — which includes NOC's own
+   service account (noc-service@tuwalink.com), since it holds
+   super-admin for API access purposes. That address is not a real
+   monitored inbox, so Brevo has been silently failing ("Deferred,
+   connection timeout") to deliver every device-down and bandwidth
+   alert sent to it since the account was created — a real regression
+   affecting production alerting that had been present and unnoticed
+   for days, only surfaced by deliberately checking Brevo's delivery
+   logs rather than assuming "no error in our own logs" meant success.
+   Fixed via a new config('services.identity.alert_excluded_emails')
+   list (ALERT_EXCLUDED_EMAILS env var, defaults to the known service
+   account) with a dedicated regression test
+   (test_service_account_is_excluded_from_alert_recipients).
+
+Also discovered and fixed in the same investigation: the NOC service
+account's Sanctum token had expires_at = NULL, which — after this
+session's earlier token-expiration hardening work — meant Sanctum's
+global age-based expiration policy was silently applying to it too
+(that policy only applies when expires_at is null), causing
+authenticate-to-Identity failures that broke the entire alert pipeline
+(not just bandwidth alerts — device-down alerts too) starting from
+whenever that policy shipped. Fixed by reissuing the service token with
+an explicit, far-future expires_at, which exempts it from the global
+policy entirely. Worth remembering for any future service account: it
+must always be created with an explicit expiration, never left as
+implicit-null under a codebase that also has a global age-based policy.
+
+Real login account note: admin@tuwalink.com was renamed to
+tuwalink@gmail.com (a real, monitored inbox) at the person's request,
+since alerts need to reach somewhere they'll actually see them. This is
+also now the login email for that account.
+
+Verified live end-to-end: real threshold set on a real device, real
+SNMP poll cycle correctly detected and reported the breach, real event
+logged, real email correctly delivered to a real inbox — confirmed via
+screenshot, not assumed from logs alone.
+
+6 new backend tests (threshold logic) + 1 new regression test (alert
+exclusion), full NOC suite passing at 93 tests.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
