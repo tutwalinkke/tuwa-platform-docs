@@ -460,6 +460,36 @@ screenshot, not assumed from logs alone.
 6 new backend tests (threshold logic) + 1 new regression test (alert
 exclusion), full NOC suite passing at 93 tests.
 
+## Maintenance windows
+
+Per-device scheduled downtime (maintenance_windows table: device_id,
+starts_at, ends_at, reason). Device::isInMaintenance() checks for an
+active window right now. Both PollDevices (device up/down) and
+PollDeviceInterfaces (bandwidth thresholds) check this before sending
+an alert email — but never before logging the event. During a window,
+what would normally be a critical/warning severity event is logged as
+info instead, with the message explicitly noting it happened during
+scheduled maintenance. This means a full, honest historical record
+always exists (a device did go down, or bandwidth genuinely was over
+threshold) — maintenance mode changes how urgently that gets treated,
+never whether it gets recorded at all.
+
+CRUD API (POST to schedule, POST .../end-early to close a window before
+its planned end without deleting the historical record, DELETE to
+remove entirely), tenant-scoped, activity-logged, consistent with every
+other resource in this platform.
+
+Verified live: scheduled a real window on the real SNMP test device,
+forced a real bandwidth breach during it, confirmed via direct database
+query that the event was logged at info severity with the maintenance
+context in its message, and that zero mail jobs were queued (not just
+delayed — genuinely never sent).
+
+9 new tests (MaintenanceWindowTest): API CRUD, tenant isolation,
+Device::isInMaintenance() correctness (including the boundary case of
+a future-scheduled window not counting as active yet), and suppression
+behavior for both PollDevices and the bandwidth threshold checker.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
