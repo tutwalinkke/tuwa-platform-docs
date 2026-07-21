@@ -490,6 +490,46 @@ Device::isInMaintenance() correctness (including the boundary case of
 a future-scheduled window not counting as active yet), and suppression
 behavior for both PollDevices and the bandwidth threshold checker.
 
+## Incident tracking and escalation
+
+Every critical or warning severity DeviceEvent automatically creates an
+Incident (IncidentService::maybeCreateFromEvent) — open -> acknowledged
+-> resolved. Maintenance-suppressed events never create an incident,
+for free, since they're already downgraded to info severity before
+IncidentService ever sees them (no separate maintenance-check needed
+here — this was a deliberate design choice to avoid duplicating that
+logic in a second place).
+
+CheckIncidentEscalation command, scheduled every 5 minutes: finds
+incidents still open and unacknowledged past a configurable threshold
+(--minutes, default 30) and sends a second, more urgent email
+(IncidentEscalationAlert) via the same AlertService/recipient-scoping
+pipeline as every other alert. escalated_at is set once escalation
+fires, so the same incident is never escalated twice even though the
+check runs repeatedly.
+
+API: GET /incidents (tenant-scoped, optional ?status= filter), POST
+.../acknowledge, POST .../resolve — both activity-logged, both reject
+an incident that's not in the expected state (can't acknowledge an
+already-acknowledged incident, can't resolve an already-resolved one).
+
+Verified live end-to-end on real production data: forced a genuine
+device state transition, confirmed a real Incident was created linked
+to the real triggering DeviceEvent, acknowledged it via the real API
+with real user attribution, confirmed the escalation command correctly
+skipped it once acknowledged (tested with --minutes=0 to rule out any
+timing coincidence), then resolved it — every step confirmed via actual
+API responses, not assumed from passing tests alone.
+
+11 new tests (IncidentTest): IncidentService creation rules, API CRUD
+and tenant scoping, and escalation command behavior (fires past
+threshold, doesn't fire within threshold, doesn't fire for acknowledged
+incidents, never fires twice for the same incident).
+
+Portal UI for incidents is intentionally deferred to a following pass —
+this was scoped as backend + API first, consistent with how bandwidth
+alerting and maintenance windows were built.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
