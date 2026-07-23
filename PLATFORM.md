@@ -735,6 +735,56 @@ Worth remembering: any future cleanup involving multiple device IDs
 should look up and confirm which records are genuinely disposable
 before deleting, not delete by a blind ID range.
 
+## SNMP added to zero-touch provisioning (2026-07-23/24)
+
+A real gap identified directly by the person: the original one-paste
+provisioning connected a device via WireGuard but never actually
+enabled the rich monitoring (bandwidth, interfaces) the rest of the
+platform provides — SNMP had to be set up manually afterward, which
+defeats the point of "one paste, everything works." Fixed properly by
+extending the automated flow, not by patching the one already-connected
+device as a one-off.
+
+Backend: redeem() now generates a real, random, per-device SNMP
+community (never shared across the fleet — a single leaked community
+would otherwise grant read access to every device) and returns it
+alongside server_wireguard_ip. The RouterOS script uses both to enable
+SNMP and restrict its community's `addresses` to exactly the
+management tunnel IP — confirmed this restriction genuinely works by
+testing an SNMP query from an unauthorized address and watching it
+correctly time out.
+
+Real, non-obvious finding during testing: RouterOS's default `public`
+SNMP community cannot be deleted, only renamed and restricted — a
+`/snmp/community/remove` on it fails outright. The correct approach,
+used in the script, is `/snmp/community/set` to rename it to the real
+generated community and apply the address restriction, rather than
+trying to add a second community alongside an still-unrestricted
+default.
+
+A real debugging detour worth recording honestly: several live test
+runs failed with a generic, unhelpful error message. Traced through
+careful isolation (checking `/tool fetch` in isolation, checking
+`X-RateLimit-Remaining` headers directly, testing the full redeem
+request via curl bypassing the router entirely) to real rate-limiting
+— our own extensive diagnostic testing had been consuming the
+10-per-minute redemption throttle meant for genuine abuse protection,
+not a bug in the actual provisioning logic. Fixed the error message to
+honestly mention this as a real possible cause rather than leaving
+the person to guess. A separate, unrelated, and genuinely transient
+`wg-quick save` filesystem write failure was also investigated (real
+kernel logs checked directly) and confirmed to be a one-off, not an
+ongoing disk/filesystem problem.
+
+Verified live, completely, end to end against the real hEX S with a
+single clean paste: WireGuard tunnel established, SNMP enabled and
+genuinely restricted to the tunnel IP (confirmed via direct
+`/snmp/print` and `/snmp/community/print` on the router), the
+scheduled devices:poll cron picked up connectivity on its own with no
+manual trigger needed, and devices:poll-snmp correctly discovered
+every real interface with accurate physical port states and began
+returning genuine bandwidth figures within one poll cycle.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
