@@ -620,6 +620,52 @@ nginx sites-enabled shows only Tuwa's seven real vhosts, all 122 NOC
 tests still passing, Identity/NOC/Portal all confirmed healthy after
 every single step — not just at the end.
 
+## Device provisioning codes (zero-touch onboarding)
+
+Tuwa's own fresh WireGuard interface, built from scratch on 10.20.0.0/24
+(port 51821) after removing an unrelated legacy system that was found
+sharing this VPS (see "Legacy system removal" above) — no relation to,
+or reuse of, anything from that prior setup.
+
+Flow: a Portal user (authenticated) generates a short-lived (15
+minute), single-use code via POST /provisioning-codes. A router
+redeems it via POST /provisioning-codes/redeem — deliberately outside
+identity.auth, since a fresh unconfigured router has no bearer token
+yet; the code itself is the credential, which is exactly why it's
+short-lived, single-use, and the endpoint is rate-limited
+(throttle:10,1). Redemption: allocates the next free 10.20.0.x IP,
+adds a real WireGuard peer via WireGuardService (a thin, mockable
+wrapper around the one genuinely untestable part — real `wg set` /
+`wg-quick save` shell calls, run via a narrowly-scoped passwordless
+sudo rule for www-data covering only those exact commands, verified to
+actually work as that user before being trusted), creates the Device
+record, and returns the server's public key + endpoint so the router
+can finish configuring its own side. A failed provisioning attempt (no
+IPs left, peer-add failure) never consumes the code — a transient
+failure shouldn't permanently burn a code the person would otherwise
+need to regenerate from scratch.
+
+Verified live end-to-end, not just via tests: generated a real code,
+redeemed it with a genuinely generated WireGuard keypair and no auth
+header at all, confirmed a real peer appeared on the live interface
+(`wg show`) and a real Device record was created with the correct
+assigned IP, confirmed a second redemption attempt with the same code
+was correctly rejected, confirmed Tuwa's core services stayed healthy
+throughout.
+
+10 new tests (DeviceProvisioningCodeTest): code generation requires
+auth, redemption does not, device creation with correct fields, code
+marked used on success, duplicate redemption rejected, expired code
+rejected, unknown code rejected, and both real failure modes (no IPs
+remaining, peer-add failure) correctly leave the code unconsumed.
+
+Not yet built: the actual RouterOS-side script a real MikroTik would
+run to call this endpoint and configure its own WireGuard interface
+from the response — and the Portal UI for generating/displaying codes.
+Both are natural next steps once a real device is available to verify
+against; the router-side script in particular can't be genuinely
+verified without real hardware, only reasoned about.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
