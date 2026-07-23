@@ -659,12 +659,61 @@ marked used on success, duplicate redemption rejected, expired code
 rejected, unknown code rejected, and both real failure modes (no IPs
 remaining, peer-add failure) correctly leave the code unconsumed.
 
-Not yet built: the actual RouterOS-side script a real MikroTik would
-run to call this endpoint and configure its own WireGuard interface
-from the response — and the Portal UI for generating/displaying codes.
-Both are natural next steps once a real device is available to verify
-against; the router-side script in particular can't be genuinely
-verified without real hardware, only reasoned about.
+## Fully automated one-paste provisioning (2026-07-23/24)
+
+The manual two/three-step process above was superseded the same
+night by genuine full automation, built and verified against a real
+MikroTik hEX S — the first real device connected to Tuwa.
+
+A single RouterOS command, generated per-device in the Portal (with
+the real code embedded), does everything: pre-flight check for an
+existing wg0 (fails with a readable message rather than a raw
+RouterOS error if found), interface creation, calling the redemption
+endpoint via /tool fetch, extracting assigned_ip/server_public_key/
+server_endpoint from the JSON response via string search (RouterOS
+has no built-in JSON parser), splitting the host:port endpoint, and
+completing the tunnel — wrapped in :do/on-error so a bad or expired
+code fails gracefully instead of crashing.
+
+Backend: JSON_UNESCAPED_SLASHES added to the redeem response, since
+WireGuard base64 keys routinely contain '/' and forcing every client
+to unescape '\/' is needless complexity. New GET
+/provisioning-codes/{code}/status endpoint (public, code-authenticated,
+same trust model as redeem) — returns waiting_for_redemption,
+waiting_for_connection, or connected, letting the Portal poll every 3s
+and show live state without the person needing to do anything after
+pasting the command once.
+
+Real RouterOS scripting gotchas found and worked around, only
+discoverable by testing against genuine hardware — no amount of
+reasoning about RouterOS syntax in the abstract would have caught
+these:
+- :local variables in the interactive console only live for a single
+  command line/submission — typing `:local x "y"` then pressing Enter
+  and typing `:put $x` on a new line loses the variable entirely. The
+  whole script has to be one chained line (or a saved script file).
+- Functions defined with do={...} do NOT inherit outer :local
+  variables — they only see their own explicitly-passed parameters.
+  An early draft's extractField silently returned nothing because it
+  referenced $json from the outer scope instead of a passed-in
+  parameter.
+- /tool fetch throws (aborting the calling script line) on any
+  non-2xx response rather than returning the failure status inside
+  its result value — genuinely necessitates :do/on-error wrapping for
+  any real error handling.
+
+Verified live, repeatedly, against the real hEX S: genuine one-paste
+success (interface creation through tunnel completion, zero manual
+key copying), a genuine real WireGuard handshake and working ICMP
+ping through the tunnel, the Portal's live polling UI correctly
+showing waiting-for-code → waiting-for-connection → connected, the
+success banner and automatic panel-close/device-list-refresh, and the
+new wg0-already-exists pre-flight check correctly triggering and being
+correctly caught.
+
+5 new backend tests (status endpoint) + updated/expanded frontend
+tests (the one-paste command flow and live polling, including the
+connected success state).
 
 ## Known gaps (honest, as of this writing)
 
