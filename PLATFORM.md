@@ -715,6 +715,26 @@ correctly caught.
 tests (the one-paste command flow and live polling, including the
 connected success state).
 
+## Real incident: accidental deletion of the real hEX S device record
+
+During the same session's testing, an untargeted cleanup command
+(`for id in 9 10 11 12; do curl -X DELETE .../devices/$id; done`)
+deleted the real, genuinely-connected tuwatest5 device record
+alongside disposable earlier test devices, without first checking
+which ID was the real one. A real mistake, not a system bug.
+
+Impact was limited to the Device database row — the underlying
+WireGuard tunnel and the router's own configuration were completely
+unaffected (`wg show` continued showing a live, recently-handshaking
+peer throughout). Recovered cleanly: recreated the Device record via
+the real API, restored wireguard_ip/wireguard_public_key to match the
+still-live peer, ran devices:poll manually and confirmed it
+immediately reconnected correctly.
+
+Worth remembering: any future cleanup involving multiple device IDs
+should look up and confirm which records are genuinely disposable
+before deleting, not delete by a blind ID range.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
