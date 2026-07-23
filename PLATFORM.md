@@ -573,6 +573,53 @@ unconnected third device correctly shown with no line.
 most load-bearing ones: link normalization and duplicate-rejection
 regardless of declared order.
 
+## Legacy system removal (2026-07-23)
+
+This VPS was found to be running a second, unrelated system alongside
+Tuwa — discovered while investigating this server's existing WireGuard
+setup (wg0, ~25 peers) for a planned zero-touch device provisioning
+feature. Confirmed by the account owner to be their own prior
+deployment, no longer needed, with full authority to remove.
+
+What it was: a real, previously-live ISP management stack — GenieACS
+(TR-069 auto-configuration server, npm package), MongoDB (GenieACS's
+datastore), FreeRADIUS (PPPoE/hotspot authentication), a WireGuard
+tunnel (wg0) with ~25 real peers, and a Laravel application serving
+tuwalink.com, www.tuwalink.com, hotspot.tuwalink.com, and (via a
+wildcard rule) any subdomain of tuwalink.com not otherwise configured.
+
+Audited before touching anything: the Laravel app's actual code was
+already gone (only an empty storage/logs directory remained), its
+scheduler had been failing every single run ("Could not open input
+file: artisan"), tuwalink.com and hotspot.tuwalink.com were both
+already returning 404, and FreeRADIUS had processed zero
+authentications in the prior 24 hours — genuinely dormant
+infrastructure, not something actively serving real traffic, though
+the WireGuard tunnel itself remained live at the network layer (one
+peer had a real handshake within the prior 2 days).
+
+Full backup taken before removal, at /srv/removed-system-backup:
+app-code.tar.gz, nginx-tuwalink.conf, wg0.conf.backup, both systemd
+unit file backups, tuwalink_db.sql (MySQL dump), and a full mongodump
+of GenieACS's database.
+
+Removed, in order, verifying Tuwa's health after each step: stopped
+and disabled all services, removed the tuwalink nginx vhost, tore down
+the WireGuard interface (a real gotcha here: systemctl stop reported
+success but the interface stayed up at the kernel level — wg show
+kept showing all peers live; wg-quick down was needed to actually tear
+it down, including running the PostDown iptables cleanup rules that a
+bare interface deletion would have skipped), removed systemd unit
+files, removed the empty app directory, dropped tuwalink_db, uninstalled
+the genieacs npm package and the mongodb-org/freeradius apt packages,
+and removed the dangling genieacs nginx symlink that remained after
+its target application was gone.
+
+Verified clean: no matching enabled services, no matching processes,
+nginx sites-enabled shows only Tuwa's seven real vhosts, all 122 NOC
+tests still passing, Identity/NOC/Portal all confirmed healthy after
+every single step — not just at the end.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
