@@ -785,6 +785,48 @@ manual trigger needed, and devices:poll-snmp correctly discovered
 every real interface with accurate physical port states and began
 returning genuine bandwidth figures within one poll cycle.
 
+## Visual redesign, phase 1: tokens + Dashboard (2026-07-24)
+
+Real design tokens extracted directly from a design reference's own
+CSS custom properties (:root variables) — void-black surface scale,
+blue/cyan technical accent, sharp 3-8px radii, JetBrains Mono/Inter
+typography (already matched what Tuwa used). Applied to Tailwind
+config using the SAME token names the whole Portal already relies on
+(ink.950/900/etc, signal, mist, status) — meaning every existing page
+picked up the new palette automatically the moment the config changed,
+no per-page markup rewrite needed for the base swap.
+
+Dashboard specifically got the fuller treatment beyond the base
+palette: a CardHead component adding corner-bracket accents (small
+technical framing marks on card headers, adapted from the reference),
+outline-badge KPI cards (small bordered accent square + uppercase
+micro-label + large mono value, "technical readout" style), updated
+chart gradient colors matching the new blue/cyan story. Every real
+data binding — health percent, device counts, bandwidth figures, event
+feed — kept completely unchanged; this was a visual pass only, no
+behavior or data logic touched.
+
+Real bug found live during the visual sweep, not assumed: Topology's
+device details panel had value text with no explicit color class,
+relying on an implicit default that happened to be legible against the
+old lighter navy palette but became invisible against the new,
+noticeably darker void-black tokens. Fixed immediately with an
+explicit text-mist-50. A full manual click-through of every other page
+(Incidents, Devices, Customers, Subnets, Billing, Activity, Settings)
+confirmed no other readability regressions.
+
+Explicitly scoped as phase 1 — deliberately NOT a full re-theme of
+every page's fuller visual treatment (KPI-card-style patterns,
+corner-bracket accents) beyond the base token swap, given how late in
+a long session this was picked up. Every other page has the new colors
+correctly (via the shared tokens) but not yet the fuller Dashboard-style
+treatment. Continuing that across Incidents/Devices/Topology/Customers/
+Subnets/Billing/Activity/Settings is real, scoped, well-understood
+follow-up work for next time — the hard design decisions (the actual
+token values, the card-head pattern, the KPI card pattern) are already
+made and proven, so extending them should be materially faster than
+tonight's from-scratch design work.
+
 ## Known gaps (honest, as of this writing)
 
 1. Real M-Pesa (Daraja API) — needs a real Safaricom business shortcode and
